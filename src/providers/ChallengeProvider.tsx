@@ -1,4 +1,4 @@
-import React, { createContext,ReactNode, useCallback, useState } from 'react';
+import React, { createContext,ReactNode, useCallback, useEffect, useState } from 'react';
 import challenges from '../../challenges.json';
 
 type Challenge = {
@@ -20,6 +20,7 @@ interface ChallengeContextData {
   levelUp: () => void;
   startNewChallenge: () => void;
   resetChallenge: () => void;
+  completeChallenge: () => void;
 }
 
 export const ChallengeContext = createContext({} as ChallengeContextData);
@@ -33,23 +34,66 @@ const ChallengeProvider: React.FC = ({children}:ChallengeProviderProps) => {
 
   const [activeChallenge, setActiveChallenge] = useState(null);
 
-  const experienceToNextLevel = Math.pow((level + 1) * FACTOR, 2)
+  const experienceToNextLevel = Math.pow((level + 1) * FACTOR, 2);
+
+  useEffect(()=>{
+    Notification.requestPermission()
+  },[])
 
   const levelUp = useCallback(()=>{
     setLevel( level + 1);
   },[]);
 
   const startNewChallenge = useCallback(()=>{
-    const randomChallengeIndex = Math.floor(Math.random() * challenges.length);
     
+    const randomChallengeIndex = Math.floor(Math.random() * challenges.length);
     const challenge = challenges[randomChallengeIndex];
-    setActiveChallenge(challenge)
+
+    setActiveChallenge(challenge);
+
+    new Audio('/notification.mp3').play();
+
+    if (!("Notification" in navigator)) {
+      console.log('Esse browser não suporta notificações desktop');
+    }
+
+    if(Notification.permission === 'granted'){
+      new Notification('Novo desafio', {
+        body: `Valendo ${challenge.amount}xp`
+      });
+    }
+
 
   },[]);
 
   const resetChallenge = useCallback(()=>{
     setActiveChallenge(null);
-  },[])
+  },[]);
+
+  const completeChallenge = useCallback(()=>{
+    
+    
+    if(activeChallenge === null) {
+      console.log(activeChallenge)
+      return;
+
+    }
+    console.log('cheguei aqui')
+    const {amount} = activeChallenge;
+
+    let finalExperience = currentExperience + amount;
+
+    if(finalExperience >= experienceToNextLevel) {
+
+      finalExperience = finalExperience - experienceToNextLevel;
+      levelUp();
+
+      setCurrentExperience(finalExperience);
+      setActiveChallenge(null);
+      setChallengesCompleted(challengesCompleted + 1);
+
+    }
+  },[activeChallenge,currentExperience,experienceToNextLevel,challengesCompleted]);
 
   return (
     <ChallengeContext.Provider value={{
@@ -62,6 +106,7 @@ const ChallengeProvider: React.FC = ({children}:ChallengeProviderProps) => {
       levelUp,
       startNewChallenge,
       resetChallenge,
+      completeChallenge,
     }}>
       {children}
     </ChallengeContext.Provider>
