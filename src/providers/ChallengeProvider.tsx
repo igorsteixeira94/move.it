@@ -1,5 +1,6 @@
 import React, { createContext,ReactNode, useCallback, useEffect, useState } from 'react';
 import challenges from '../../challenges.json';
+import Cookies from 'js-cookie';
 
 type Challenge = {
   type: 'body' | 'eye';
@@ -8,7 +9,10 @@ type Challenge = {
 }
 
 interface ChallengeProviderProps {
-   children: ReactNode;
+  level?: number;
+  currentExperience: number;
+  challengesCompleted: number;
+  children: ReactNode;
 }
 
 interface ChallengeContextData {
@@ -27,10 +31,10 @@ export const ChallengeContext = createContext({} as ChallengeContextData);
 
 const FACTOR = 4; // Fator de difilcudade, quanto maior mais dificil.
 
-const ChallengeProvider: React.FC = ({children}:ChallengeProviderProps) => {
-  const [level, setLevel] = useState(1);
-  const [currentExperience, setCurrentExperience] = useState(0);
-  const [challengesCompleted, setChallengesCompleted] = useState(0);
+const ChallengeProvider: React.FC<ChallengeProviderProps> = ({children,...rest}:ChallengeProviderProps) => {
+  const [level, setLevel] = useState(rest.level || 1);
+  const [currentExperience, setCurrentExperience] = useState(rest.currentExperience || 0);
+  const [challengesCompleted, setChallengesCompleted] = useState(rest.challengesCompleted || 0);
 
   const [activeChallenge, setActiveChallenge] = useState(null);
 
@@ -43,6 +47,12 @@ const ChallengeProvider: React.FC = ({children}:ChallengeProviderProps) => {
   const levelUp = useCallback(()=>{
     setLevel( level + 1);
   },[]);
+
+  useEffect(()=>{
+    Cookies.set('level',String(level));
+    Cookies.set('currentExperience',String(currentExperience));
+    Cookies.set('challengeCompleted',String(challengesCompleted));
+  },[level,currentExperience,challengesCompleted])
 
   const startNewChallenge = useCallback(()=>{
     
@@ -88,11 +98,12 @@ const ChallengeProvider: React.FC = ({children}:ChallengeProviderProps) => {
       finalExperience = finalExperience - experienceToNextLevel;
       levelUp();
 
+    }
+
       setCurrentExperience(finalExperience);
       setActiveChallenge(null);
       setChallengesCompleted(challengesCompleted + 1);
-
-    }
+    
   },[activeChallenge,currentExperience,experienceToNextLevel,challengesCompleted]);
 
   return (
